@@ -2654,8 +2654,10 @@ static void __gsi_read_channel_scratch(unsigned long chan_hdl,
 			gsi_ctx->per.ee));
 }
 
-static union __packed gsi_channel_scratch __gsi_update_mhi_channel_scratch(
-	unsigned long chan_hdl, struct __packed gsi_mhi_channel_scratch mscr)
+
+static union gsi_channel_scratch __gsi_update_mhi_channel_scratch(
+	unsigned long chan_hdl, struct gsi_mhi_channel_scratch mscr)
+
 {
 	union __packed gsi_channel_scratch scr;
 
@@ -2780,7 +2782,7 @@ int gsi_read_channel_scratch(unsigned long chan_hdl,
 EXPORT_SYMBOL(gsi_read_channel_scratch);
 
 int gsi_update_mhi_channel_scratch(unsigned long chan_hdl,
-		struct __packed gsi_mhi_channel_scratch mscr)
+		struct gsi_mhi_channel_scratch mscr)
 {
 	struct gsi_chan_ctx *ctx;
 
