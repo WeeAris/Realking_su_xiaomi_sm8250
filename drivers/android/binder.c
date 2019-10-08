@@ -64,6 +64,7 @@
 #include <linux/task_work.h>
 #include <linux/sizes.h>
 #include <uapi/linux/eventpoll.h>
+#include <uapi/linux/android/binderfs.h>
 #include <uapi/linux/sched/types.h>
 #include <uapi/linux/android/binder.h>
 #include <asm/cacheflush.h>
@@ -2540,6 +2541,7 @@ static void binder_transaction(struct binder_proc *proc,
 	e->data_size = tr->data_size;
 	e->offsets_size = tr->offsets_size;
 	strscpy(e->context_name, proc->context->name, BINDERFS_MAX_NAME);
+
 	if (reply) {
 		binder_inner_proc_lock(proc);
 		in_reply_to = thread->transaction_stack;
