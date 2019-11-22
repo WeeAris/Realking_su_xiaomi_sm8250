@@ -111,3 +111,4 @@ obj-$(CONFIG_HMM) += hmm.o
 obj-$(CONFIG_MEMFD_CREATE) += memfd.o
 
 CFLAGS_kmemleak.o += -DCONFIG_DEBUG_FS
+obj-$(CONFIG_OOM_SCORE_NOTIFIER) += oom_score_notifier.o
