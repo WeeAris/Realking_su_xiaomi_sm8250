@@ -30,13 +30,8 @@ msm_adreno-y += \
 	adreno_drawctxt.o \
 	adreno_dispatch.o \
 	adreno_snapshot.o \
-	adreno_a3xx.o \
-	adreno_a5xx.o \
 	adreno_a6xx.o \
-	adreno_a3xx_snapshot.o \
-	adreno_a5xx_snapshot.o \
 	adreno_a6xx_snapshot.o \
-	adreno_a5xx_preempt.o \
 	adreno_a6xx_preempt.o \
 	adreno_a6xx_gmu.o \
 	adreno_a6xx_rgmu.o \
