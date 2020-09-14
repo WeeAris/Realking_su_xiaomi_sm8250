@@ -299,6 +299,19 @@ int vma_is_stack_for_current(struct vm_area_struct *vma)
 
 /*
  * Change backing file, only valid to use during initial VMA setup.
+/**
+ * randomize_page - Generate a random, page aligned address
+ * @start:	The smallest acceptable address the caller will take.
+ * @range:	The size of the area, starting at @start, within which the
+ *		random address must fall.
+ *
+ * If @start + @range would overflow, @range is capped.
+ *
+ * NOTE: Historical use of randomize_range, which this replaces, presumed that
+ * @start was already page aligned.  We now align it regardless.
+ *
+ * Return: A page aligned address within [start, start + range).  On error,
+ * @start is returned.
  */
 void vma_set_file(struct vm_area_struct *vma, struct file *file)
 {
