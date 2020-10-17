@@ -55,7 +55,7 @@ static int vbswap_bvec_read(struct bio_vec *bvec,
 	unsigned char *user_mem, *swap_header_page_mem;
 
 	if (unlikely(index != 0)) {
-		pr_err("tried to read outside of swap header\n");
+		pr_debug("tried to read outside of swap header\n");
 		// Return empty pages on valid requests to workaround toybox binary search
 	}
 
@@ -87,7 +87,7 @@ static int vbswap_bvec_write(struct bio_vec *bvec,
 	unsigned char *user_mem, *swap_header_page_mem;
 
 	if (unlikely(index != 0)) {
-		pr_err("tried to write outside of swap header\n");
+		pr_debug("tried to write outside of swap header\n");
 		return -EIO;
 	}
 
