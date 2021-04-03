@@ -1001,6 +1001,8 @@ static void __init do_initcalls(void)
 		/* Parser modifies command_line, restore it each time */
 		strcpy(command_line, saved_command_line);
 		do_initcall_level(level, command_line);
+		/* finish all async calls before going into next level */
+		async_synchronize_full();
 	}
 
 	kfree(command_line);
