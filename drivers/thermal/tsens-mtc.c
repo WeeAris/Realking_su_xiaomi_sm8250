@@ -22,8 +22,7 @@ struct tsens_device *tsens_controller_is_present(void)
 }
 EXPORT_SYMBOL(tsens_controller_is_present);
 
-#if 0
-static int tsens_mtc_reset_history_counter(unsigned int zone)
+__maybe_unused static int tsens_mtc_reset_history_counter(unsigned int zone)
 {
 	unsigned int reg_cntl, is_valid;
 	void __iomem *sensor_addr;
