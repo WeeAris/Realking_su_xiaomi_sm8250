@@ -6622,8 +6622,6 @@ static int select_idle_core(struct task_struct *p, struct sched_domain *sd, int 
 		bool idle = true;
 
 		for_each_cpu(cpu, cpu_smt_mask(core)) {
-			__cpumask_clear_cpu(cpu, cpus);
-			if (!available_idle_cpu(cpu))
 			if (!available_idle_cpu(cpu)) {
 				idle = false;
 				break;
