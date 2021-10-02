@@ -61,8 +61,8 @@ struct kgsl_drawobj {
  * for easy access
  * @profile_index: Index to store the start/stop ticks in the kernel profiling
  * buffer
-
  */
+
 struct kgsl_drawobj_cmd {
 	struct kgsl_drawobj base;
 	unsigned long priv;
