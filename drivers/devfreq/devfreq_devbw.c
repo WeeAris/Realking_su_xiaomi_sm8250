@@ -183,6 +183,18 @@ int devfreq_add_devbw(struct device *dev)
 	if (!strcmp(dev_name(dev), "soc:qcom,cpu-llcc-ddr-bw"))
 		devfreq_register_boost_device(DEVFREQ_CPU_LLCC_DDR_BW, d->df);
 
+	if (!strcmp(dev_name(dev), "soc:qcom,cpu0-cpu-llcc-lat"))
+		devfreq_register_boost_device(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT, d->df);
+
+	if (!strcmp(dev_name(dev), "soc:qcom,cpu4-cpu-llcc-lat"))
+		devfreq_register_boost_device(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT, d->df);
+
+	if (!strcmp(dev_name(dev), "soc:qcom,cpu0-llcc-ddr-lat"))
+		devfreq_register_boost_device(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT, d->df);
+
+	if (!strcmp(dev_name(dev), "soc:qcom,cpu4-llcc-ddr-lat"))
+		devfreq_register_boost_device(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT, d->df);
+
 	return 0;
 }
 
