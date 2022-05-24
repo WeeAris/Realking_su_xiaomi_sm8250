@@ -1943,3 +1943,9 @@ FORCE:
 # Declare the contents of the PHONY variable as phony.  We keep that
 # information in a variable so we can use it in if_changed and friends.
 .PHONY: $(PHONY)
+#
+# Copyright (C) 2021-2022 Dakkshesh <dakkshesh5@gmail.com>.
+
+obj-$(CONFIG_KPROFILES)	+=	kprofiles.o
+
+kprofiles-objs	:=	main.o
