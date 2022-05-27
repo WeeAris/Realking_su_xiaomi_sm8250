@@ -5019,6 +5019,8 @@ int dsi_panel_enable(struct dsi_panel *panel)
 	mutex_unlock(&panel->panel_lock);
 	display_utc_time_marker("DSI_CMD_SET_ON");
 
+	if (panel->hbm_mode)
+		dsi_panel_apply_hbm_mode(panel);
 
 	return rc;
 }
@@ -5289,8 +5291,8 @@ error:
 int dsi_panel_apply_hbm_mode(struct dsi_panel *panel)
 {
 	static const enum dsi_cmd_set_type type_map[] = {
-		DSI_CMD_SET_MI_HBM_OFF,
-		DSI_CMD_SET_MI_HBM_ON
+		DSI_CMD_SET_MI_HBM_FOD_OFF,
+		DSI_CMD_SET_MI_HBM_FOD_ON
 	};
 
 	enum dsi_cmd_set_type type;
@@ -5300,7 +5302,7 @@ int dsi_panel_apply_hbm_mode(struct dsi_panel *panel)
 		panel->hbm_mode < ARRAY_SIZE(type_map))
 		type = type_map[panel->hbm_mode];
 	else
-		type = type_map[0];
+		type = DSI_CMD_SET_MI_HBM_FOD_OFF;
 
 	mutex_lock(&panel->panel_lock);
 	rc = dsi_panel_tx_cmd_set(panel, type);
