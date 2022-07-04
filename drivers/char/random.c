@@ -336,8 +336,11 @@
 #include <linux/syscalls.h>
 #include <linux/completion.h>
 #include <linux/uuid.h>
+#include <linux/uaccess.h>
+#include <linux/siphash.h>
+#include <linux/uio.h>
 #include <crypto/chacha.h>
-
+#include <crypto/blake2s.h>
 #include <asm/processor.h>
 #include <linux/uaccess.h>
 #include <asm/irq.h>
@@ -476,7 +479,10 @@ struct entropy_store {
 	__u32 *pool;
 	const char *name;
 
-	/* read-write data: */
+static struct {
+	u8 key[CHACHA_KEY_SIZE] __aligned(__alignof__(long));
+	unsigned long birth;
+	unsigned long generation;
 	spinlock_t lock;
 	unsigned short add_ptr;
 	unsigned short input_rotate;
@@ -486,13 +492,10 @@ struct entropy_store {
 	__u8 last_data[EXTRACT_SIZE];
 };
 
-static ssize_t extract_entropy(struct entropy_store *r, void *buf,
-			       size_t nbytes, int min, int rsvd);
-static ssize_t _extract_entropy(struct entropy_store *r, void *buf,
-				size_t nbytes, int fips);
-
-static void crng_reseed(struct crng_state *crng, struct entropy_store *r);
-static __u32 input_pool_data[INPUT_POOL_WORDS] __latent_entropy;
+struct crng {
+	u8 key[CHACHA_KEY_SIZE];
+	unsigned long generation;
+};
 
 static struct entropy_store input_pool = {
 	.poolinfo = &poolinfo_table[0],
@@ -518,45 +521,9 @@ static __u32 const twist_table[8] = {
 static void _mix_pool_bytes(struct entropy_store *r, const void *in,
 			    int nbytes)
 {
-	unsigned long i, tap1, tap2, tap3, tap4, tap5;
-	int input_rotate;
-	int wordmask = r->poolinfo->poolwords - 1;
-	const char *bytes = in;
-	__u32 w;
-
-	tap1 = r->poolinfo->tap1;
-	tap2 = r->poolinfo->tap2;
-	tap3 = r->poolinfo->tap3;
-	tap4 = r->poolinfo->tap4;
-	tap5 = r->poolinfo->tap5;
-
-	input_rotate = r->input_rotate;
-	i = r->add_ptr;
-
-	/* mix one byte at a time to simplify size handling and churn faster */
-	while (nbytes--) {
-		w = rol32(*bytes++, input_rotate);
-		i = (i - 1) & wordmask;
-
-		/* XOR in the various taps */
-		w ^= r->pool[i];
-		w ^= r->pool[(i + tap1) & wordmask];
-		w ^= r->pool[(i + tap2) & wordmask];
-		w ^= r->pool[(i + tap3) & wordmask];
-		w ^= r->pool[(i + tap4) & wordmask];
-		w ^= r->pool[(i + tap5) & wordmask];
-
-		/* Mix the result back in with a twist */
-		r->pool[i] = (w >> 3) ^ twist_table[w & 7];
-
-		/*
-		 * Normally, we add 7 bits of rotation to the pool.
-		 * At the beginning of the pool, add an extra 7 bits
-		 * rotation, so that successive passes spread the
-		 * input bits across the pool evenly.
-		 */
-		input_rotate = (input_rotate + (i ? 7 : 14)) & 31;
-	}
+	unsigned long flags;
+	unsigned long next_gen;
+	u8 key[CHACHA_KEY_SIZE];
 
 	r->input_rotate = input_rotate;
 	r->add_ptr = i;
@@ -592,30 +559,24 @@ struct fast_pool {
  * collector.  It's hardcoded for an 128 bit pool and assumes that any
  * locks that might be needed are taken by the caller.
  */
-static void fast_mix(struct fast_pool *f)
+static void crng_fast_key_erasure(u8 key[CHACHA_KEY_SIZE],
+				  u32 chacha_state[CHACHA_BLOCK_SIZE / sizeof(u32)],
+				  u8 *random_data, size_t random_data_len)
 {
-	__u32 a = f->pool[0],	b = f->pool[1];
-	__u32 c = f->pool[2],	d = f->pool[3];
+	u8 first_block[CHACHA_BLOCK_SIZE];
 
 	a += b;			c += d;
 	b = rol32(b, 6);	d = rol32(d, 27);
 	d ^= a;			b ^= c;
 
-	a += b;			c += d;
-	b = rol32(b, 16);	d = rol32(d, 14);
-	d ^= a;			b ^= c;
+	chacha_init_consts(chacha_state);
+	memcpy(&chacha_state[4], key, CHACHA_KEY_SIZE);
+	memset(&chacha_state[12], 0, sizeof(u32) * 4);
+	chacha20_block(chacha_state, first_block);
 
-	a += b;			c += d;
-	b = rol32(b, 6);	d = rol32(d, 27);
-	d ^= a;			b ^= c;
-
-	a += b;			c += d;
-	b = rol32(b, 16);	d = rol32(d, 14);
-	d ^= a;			b ^= c;
-
-	f->pool[0] = a;  f->pool[1] = b;
-	f->pool[2] = c;  f->pool[3] = d;
-	f->count++;
+	memcpy(key, first_block, CHACHA_KEY_SIZE);
+	memcpy(random_data, first_block + CHACHA_KEY_SIZE, random_data_len);
+	memzero_explicit(first_block, sizeof(first_block));
 }
 
 static void process_random_ready_list(void)
@@ -639,7 +600,8 @@ static void process_random_ready_list(void)
  * Use credit_entropy_bits_safe() if the value comes from userspace
  * or otherwise should be checked for extreme values.
  */
-static void credit_entropy_bits(struct entropy_store *r, int nbits)
+static void crng_make_state(u32 chacha_state[CHACHA_BLOCK_SIZE / sizeof(u32)],
+			    u8 *random_data, size_t random_data_len)
 {
 	int entropy_count, orig, has_initialized = 0;
 	const int pool_size = r->poolinfo->poolfracbits;
@@ -720,7 +682,9 @@ retry:
 
 static int credit_entropy_bits_safe(struct entropy_store *r, int nbits)
 {
-	const int nbits_max = r->poolinfo->poolwords * 32;
+	u32 chacha_state[CHACHA_BLOCK_SIZE / sizeof(u32)];
+	u8 tmp[CHACHA_BLOCK_SIZE];
+	size_t first_block_len;
 
 	if (nbits < 0)
 		return -EINVAL;
@@ -728,15 +692,20 @@ static int credit_entropy_bits_safe(struct entropy_store *r, int nbits)
 	/* Cap the value to avoid overflows */
 	nbits = min(nbits,  nbits_max);
 
-	credit_entropy_bits(r, nbits);
-	return 0;
-}
+	while (len) {
+		if (len < CHACHA_BLOCK_SIZE) {
+			chacha20_block(chacha_state, tmp);
+			memcpy(buf, tmp, len);
+			memzero_explicit(tmp, sizeof(tmp));
+			break;
+		}
 
-/*********************************************************************
- *
- * CRNG using CHACHA20
- *
- *********************************************************************/
+		chacha20_block(chacha_state, buf);
+		if (unlikely(chacha_state[12] == 0))
+			++chacha_state[13];
+		len -= CHACHA_BLOCK_SIZE;
+		buf += CHACHA_BLOCK_SIZE;
+	}
 
 #define CRNG_RESEED_INTERVAL (300*HZ)
 
@@ -764,47 +733,27 @@ early_param("random.trust_cpu", parse_trust_cpu);
 
 static void crng_initialize(struct crng_state *crng)
 {
-	int		i;
-	int		arch_init = 1;
-	unsigned long	rv;
+	u32 chacha_state[CHACHA_BLOCK_SIZE / sizeof(u32)];
+	u8 block[CHACHA_BLOCK_SIZE];
+	size_t ret = 0, copied;
 
-	memcpy(&crng->state[0], "expand 32-byte k", 16);
-	if (crng == &primary_crng)
-		_extract_entropy(&input_pool, &crng->state[4],
-				 sizeof(__u32) * 12, 0);
-	else
-		_get_random_bytes(&crng->state[4], sizeof(__u32) * 12);
-	for (i = 4; i < 16; i++) {
-		if (!arch_get_random_seed_long(&rv) &&
-		    !arch_get_random_long(&rv)) {
-			rv = random_get_entropy();
-			arch_init = 0;
-		}
-		crng->state[i] ^= rv;
-	}
-	if (trust_cpu && arch_init && crng == &primary_crng) {
-		invalidate_batched_entropy();
-		numa_crng_init();
-		crng_init = 2;
-		pr_notice("crng done (trusting CPU's manufacturer)\n");
-	}
-	crng->init_time = jiffies - CRNG_RESEED_INTERVAL - 1;
-}
+	if (unlikely(!iov_iter_count(iter)))
+		return 0;
 
-#ifdef CONFIG_NUMA
-static void do_numa_crng_init(struct work_struct *work)
-{
-	int i;
-	struct crng_state *crng;
-	struct crng_state **pool;
-
-	pool = kcalloc(nr_node_ids, sizeof(*pool), GFP_KERNEL|__GFP_NOFAIL);
-	for_each_online_node(i) {
-		crng = kmalloc_node(sizeof(struct crng_state),
-				    GFP_KERNEL | __GFP_NOFAIL, i);
-		spin_lock_init(&crng->lock);
-		crng_initialize(crng);
-		pool[i] = crng;
+	/*
+	 * Immediately overwrite the ChaCha key at index 4 with random
+	 * bytes, in case userspace causes copy_to_user() below to sleep
+	 * forever, so that we still retain forward secrecy in that case.
+	 */
+	crng_make_state(chacha_state, (u8 *)&chacha_state[4], CHACHA_KEY_SIZE);
+	/*
+	 * However, if we're doing a read of len <= 32, we don't need to
+	 * use chacha_state after, so we can simply return those bytes to
+	 * the user directly.
+	 */
+	if (iov_iter_count(iter) <= CHACHA_KEY_SIZE) {
+		ret = copy_to_iter(&chacha_state[4], CHACHA_KEY_SIZE, iter);
+		goto out_zero_chacha;
 	}
 	/* pairs with READ_ONCE() in select_crng() */
 	if (cmpxchg_release(&crng_node_pool, NULL, pool) != NULL) {
@@ -836,7 +785,66 @@ static struct crng_state *select_crng(void)
 #else
 static void numa_crng_init(void) {}
 
-static struct crng_state *select_crng(void)
+#define DEFINE_BATCHED_ENTROPY(type)						\
+struct batch_ ##type {								\
+	/*									\
+	 * We make this 1.5x a ChaCha block, so that we get the			\
+	 * remaining 32 bytes from fast key erasure, plus one full		\
+	 * block from the detached ChaCha state. We can increase		\
+	 * the size of this later if needed so long as we keep the		\
+	 * formula of (integer_blocks + 0.5) * CHACHA_BLOCK_SIZE.		\
+	 */									\
+	type entropy[CHACHA_BLOCK_SIZE * 3 / (2 * sizeof(type))];		\
+	unsigned long generation;						\
+	unsigned int position;							\
+};										\
+										\
+static DEFINE_PER_CPU(struct batch_ ##type, batched_entropy_ ##type) = {	\
+	.position = UINT_MAX							\
+};										\
+										\
+type get_random_ ##type(void)							\
+{										\
+	type ret;								\
+	unsigned long flags;							\
+	struct batch_ ##type *batch;						\
+	unsigned long next_gen;							\
+										\
+	warn_unseeded_randomness();						\
+										\
+	if  (!crng_ready()) {							\
+		_get_random_bytes(&ret, sizeof(ret));				\
+		return ret;							\
+	}									\
+										\
+	local_irq_save(flags);		\
+	batch = raw_cpu_ptr(&batched_entropy_##type);				\
+										\
+	next_gen = READ_ONCE(base_crng.generation);				\
+	if (batch->position >= ARRAY_SIZE(batch->entropy) ||			\
+	    next_gen != batch->generation) {					\
+		_get_random_bytes(batch->entropy, sizeof(batch->entropy));	\
+		batch->position = 0;						\
+		batch->generation = next_gen;					\
+	}									\
+										\
+	ret = batch->entropy[batch->position];					\
+	batch->entropy[batch->position] = 0;					\
+	++batch->position;							\
+	local_irq_restore(flags);		\
+	return ret;								\
+}										\
+EXPORT_SYMBOL(get_random_ ##type);
+
+DEFINE_BATCHED_ENTROPY(u64)
+DEFINE_BATCHED_ENTROPY(u32)
+
+#ifdef CONFIG_SMP
+/*
+ * This function is called when the CPU is coming up, with entry
+ * CPUHP_RANDOM_PREPARE, which comes before CPUHP_WORKQUEUE_PREP.
+ */
+int __cold random_prepare_cpu(unsigned int cpu)
 {
 	return &primary_crng;
 }
