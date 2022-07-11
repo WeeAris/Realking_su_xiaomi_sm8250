@@ -3156,7 +3156,8 @@ static int hwsim_tx_info_frame_received_nl(struct sk_buff *skb_2,
 		skb_cookie = (u64)(uintptr_t)txi->rate_driver_data[0];
 =======
 
-		skb_cookie = (u64)txi->rate_driver_data[0];
+		skb_cookie = (u64)(uintptr_t)txi->rate_driver_data[0];
+
 
 >>>>>>> 1d8597c66fa3 (wifi: mac80211_hwsim: fix race condition in pending packet)
 
