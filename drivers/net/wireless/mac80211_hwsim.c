@@ -554,7 +554,7 @@ struct mac80211_hwsim_data {
 	struct dentry *debugfs;
 
 
-	atomic64_t pending_cookie;
+	atomic_t pending_cookie;
 
 	struct sk_buff_head pending;	/* packets pending */
 	/*
@@ -1070,7 +1070,7 @@ static void mac80211_hwsim_tx_frame_nl(struct ieee80211_hw *hw,
 	int i;
 	struct hwsim_tx_rate tx_attempts[IEEE80211_TX_MAX_RATES];
 	struct hwsim_tx_rate_flag tx_attempts_flags[IEEE80211_TX_MAX_RATES];
-	u64 cookie;
+	uintptr_t cookie;
 
 	if (data->ps != PS_DISABLED)
 		hdr->frame_control |= cpu_to_le16(IEEE80211_FCTL_PM);
@@ -1144,7 +1144,7 @@ static void mac80211_hwsim_tx_frame_nl(struct ieee80211_hw *hw,
 	cookie = data->pending_cookie;
 =======
 
-	cookie = (u64)atomic64_inc_return(&data->pending_cookie);
+	cookie = atomic_inc_return(&data->pending_cookie);
 
 >>>>>>> 1d8597c66fa3 (wifi: mac80211_hwsim: fix race condition in pending packet)
 	info->rate_driver_data[0] = (void *)cookie;
@@ -3156,7 +3156,8 @@ static int hwsim_tx_info_frame_received_nl(struct sk_buff *skb_2,
 		skb_cookie = (u64)(uintptr_t)txi->rate_driver_data[0];
 =======
 
-		skb_cookie = (u64)(uintptr_t)txi->rate_driver_data[0];
+		skb_cookie = (uintptr_t)txi->rate_driver_data[0];
+
 
 
 >>>>>>> 1d8597c66fa3 (wifi: mac80211_hwsim: fix race condition in pending packet)
