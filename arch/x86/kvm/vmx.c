@@ -10918,6 +10918,11 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 #endif
 	      );
 
+	/* Eliminate branch target predictions from guest mode */
+	vmexit_fill_RSB();
+
+	vmx_enable_fb_clear(vmx);
+
 	/*
 	 * We do not use IBRS in the kernel. If this vCPU has used the
 	 * SPEC_CTRL MSR it may have left it on; save the value and
@@ -10937,9 +10942,6 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 		vmx->spec_ctrl = native_read_msr(MSR_IA32_SPEC_CTRL);
 
 	x86_spec_ctrl_restore_host(vmx->spec_ctrl, 0);
-
-	/* Eliminate branch target predictions from guest mode */
-	vmexit_fill_RSB();
 
 	/* All fields are clean at this point */
 	if (static_branch_unlikely(&enable_evmcs))

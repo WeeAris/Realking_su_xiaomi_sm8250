@@ -2,7 +2,7 @@
 /*
  * Kernel interface for the s390 arch_random_* functions
  *
- * Copyright IBM Corp. 2017
+ * Copyright IBM Corp. 2017, 2022
  *
  * Author: Harald Freudenberger <freude@de.ibm.com>
  *
@@ -14,6 +14,7 @@
 #ifdef CONFIG_ARCH_RANDOM
 
 #include <linux/static_key.h>
+#include <linux/preempt.h>
 #include <linux/atomic.h>
 
 DECLARE_STATIC_KEY_FALSE(s390_arch_random_available);
@@ -45,16 +46,22 @@ static inline bool arch_get_random_int(unsigned int *v)
 
 static inline bool arch_get_random_seed_long(unsigned long *v)
 {
-	if (static_branch_likely(&s390_arch_random_available)) {
-		return s390_arch_random_generate((u8 *)v, sizeof(*v));
+	if (static_branch_likely(&s390_arch_random_available) &&
+	    in_task()) {
+		cpacf_trng(NULL, 0, (u8 *)v, sizeof(*v));
+		atomic64_add(sizeof(*v), &s390_arch_random_counter);
+		return true;
 	}
 	return false;
 }
 
 static inline bool arch_get_random_seed_int(unsigned int *v)
 {
-	if (static_branch_likely(&s390_arch_random_available)) {
-		return s390_arch_random_generate((u8 *)v, sizeof(*v));
+	if (static_branch_likely(&s390_arch_random_available) &&
+	    in_task()) {
+		cpacf_trng(NULL, 0, (u8 *)v, sizeof(*v));
+		atomic64_add(sizeof(*v), &s390_arch_random_counter);
+		return true;
 	}
 	return false;
 }
