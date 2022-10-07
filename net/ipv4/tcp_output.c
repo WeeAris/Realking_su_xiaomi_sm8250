@@ -45,8 +45,12 @@
 
 #include <trace/events/tcp.h>
 
-
 #ifndef CONFIG_MPTCP
+static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
+			   int push_one, gfp_t gfp);
+#endif
+
+
 /* Refresh clocks of a TCP socket,
  * ensuring monotically increasing values.
  */
@@ -62,6 +66,7 @@ void tcp_mstamp_refresh(struct tcp_sock *tp)
 	if (val > tp->tcp_mstamp)
 		tp->tcp_mstamp = val;
 }
+
 
 
 static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
