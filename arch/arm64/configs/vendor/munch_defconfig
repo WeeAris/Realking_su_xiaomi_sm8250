@@ -3,11 +3,15 @@
 #
 
 #
+# Rk additions Munch/Aosp
+#
+
+#
 # General setup
 #
 CONFIG_INIT_ENV_ARG_LIMIT=32
 # CONFIG_COMPILE_TEST is not set
-CONFIG_LOCALVERSION="-N0kernel"
+CONFIG_LOCALVERSION="~RealKing//v3.0-Omega"
 CONFIG_LOCALVERSION_AUTO=y
 CONFIG_BUILD_SALT=""
 CONFIG_HAVE_KERNEL_GZIP=y
