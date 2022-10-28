@@ -1,6 +1,6 @@
 set -e
 ## Copy this script inside the kernel directory
-KERNEL_DEFCONFIG=vendor/alioth_defconfig
+KERNEL_DEFCONFIG=vendor/munch_defconfig
 export PATH="/home/rishi/kernel/clang/bin:$PATH"
 export ARCH=arm64
 export SUBARCH=arm64
