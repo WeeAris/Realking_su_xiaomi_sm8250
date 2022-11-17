@@ -73,12 +73,11 @@
 	add	$(BITS_PER_LONG/8) * nr, sp;
 #endif
 
-/* Sequence to mitigate PBRSB on eIBRS CPUs */
-#define __ISSUE_UNBALANCED_RET_GUARD(sp)	\
-	call	881f;				\
+#define ISSUE_UNBALANCED_RET_GUARD(sp)		\
+	call 992f;				\
 	int3;					\
-881:						\
-	add	$(BITS_PER_LONG/8), sp;		\
+992:						\
+	add $(BITS_PER_LONG/8), sp;		\
 	lfence;
 
 #ifdef __ASSEMBLY__
@@ -286,9 +285,11 @@ static __always_inline void vmexit_fill_RSB(void)
 	unsigned long loops;
 
 	asm volatile (ANNOTATE_NOSPEC_ALTERNATIVE
-		      ALTERNATIVE("jmp 910f",
-				  __stringify(__FILL_RETURN_BUFFER(%0, RSB_CLEAR_LOOPS, %1)),
-				  X86_FEATURE_RSB_VMEXIT)
+		      ALTERNATIVE_2("jmp 910f", "", X86_FEATURE_RSB_VMEXIT,
+				    "jmp 911f", X86_FEATURE_RSB_VMEXIT_LITE)
+		      __stringify(__FILL_RETURN_BUFFER(%0, RSB_CLEAR_LOOPS, %1))
+		      "911:"
+		      __stringify(ISSUE_UNBALANCED_RET_GUARD(%1))
 		      "910:"
 		      : "=r" (loops), ASM_CALL_CONSTRAINT
 		      : : "memory" );
