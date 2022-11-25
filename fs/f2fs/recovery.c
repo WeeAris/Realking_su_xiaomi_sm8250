@@ -45,10 +45,6 @@
 
 static struct kmem_cache *fsync_entry_slab;
 
-#ifdef CONFIG_UNICODE
-extern struct kmem_cache *f2fs_cf_name_slab;
-#endif
-
 bool f2fs_space_for_roll_forward(struct f2fs_sb_info *sbi)
 {
 	s64 nalloc = percpu_counter_sum_positive(&sbi->alloc_valid_block_count);
@@ -91,8 +87,7 @@ static struct fsync_inode_entry *add_fsync_inode(struct f2fs_sb_info *sbi,
 			goto err_out;
 	}
 
-	entry = f2fs_kmem_cache_alloc(fsync_entry_slab,
-					GFP_F2FS_ZERO, true, NULL);
+	entry = f2fs_kmem_cache_alloc(fsync_entry_slab, GFP_F2FS_ZERO);
 	entry->inode = inode;
 	list_add_tail(&entry->list, head);
 
@@ -150,7 +145,7 @@ static int init_recovered_filename(const struct inode *dir,
 		f2fs_hash_filename(dir, fname);
 #ifdef CONFIG_UNICODE
 		/* Case-sensitive match is fine for recovery */
-		kmem_cache_free(f2fs_cf_name_slab, fname->cf_name.name);
+		kfree(fname->cf_name.name);
 		fname->cf_name.name = NULL;
 #endif
 	} else {
@@ -463,7 +458,6 @@ static int check_index_in_prev_nodes(struct f2fs_sb_info *sbi,
 	/* Get the previous summary */
 	for (i = CURSEG_HOT_DATA; i <= CURSEG_COLD_DATA; i++) {
 		struct curseg_info *curseg = CURSEG_I(sbi, i);
-
 		if (curseg->segno == segno) {
 			sum = curseg->sum_blk->entries[blkoff];
 			goto got_it;
@@ -595,7 +589,7 @@ retry_dn:
 
 	f2fs_wait_on_page_writeback(dn.node_page, NODE, true, true);
 
-	err = f2fs_get_node_info(sbi, dn.nid, &ni);
+	err = f2fs_get_node_info(sbi, dn.nid, &ni, false);
 	if (err)
 		goto err;
 
@@ -764,7 +758,7 @@ next:
 		f2fs_put_page(page, 1);
 	}
 	if (!err)
-		f2fs_allocate_new_segments(sbi);
+		f2fs_allocate_new_segments(sbi, NO_CHECK_TYPE);
 	return err;
 }
 
@@ -791,6 +785,13 @@ int f2fs_recover_fsync_data(struct f2fs_sb_info *sbi, bool check_only)
 	/* Turn on quotas so that they are updated correctly */
 	quota_enabled = f2fs_enable_quota_files(sbi, s_flags & SB_RDONLY);
 #endif
+
+	fsync_entry_slab = f2fs_kmem_cache_create("f2fs_fsync_inode_entry",
+			sizeof(struct fsync_inode_entry));
+	if (!fsync_entry_slab) {
+		err = -ENOMEM;
+		goto out;
+	}
 
 	INIT_LIST_HEAD(&inode_list);
 	INIT_LIST_HEAD(&tmp_inode_list);
@@ -850,6 +851,8 @@ skip:
 		}
 	}
 
+	kmem_cache_destroy(fsync_entry_slab);
+out:
 #ifdef CONFIG_QUOTA
 	/* Turn quotas off */
 	if (quota_enabled)
@@ -857,19 +860,5 @@ skip:
 #endif
 	sbi->sb->s_flags = s_flags; /* Restore SB_RDONLY status */
 
-	return ret ? ret : err;
-}
-
-int __init f2fs_create_recovery_cache(void)
-{
-	fsync_entry_slab = f2fs_kmem_cache_create("f2fs_fsync_inode_entry",
-					sizeof(struct fsync_inode_entry));
-	if (!fsync_entry_slab)
-		return -ENOMEM;
-	return 0;
-}
-
-void f2fs_destroy_recovery_cache(void)
-{
-	kmem_cache_destroy(fsync_entry_slab);
+	return ret ? ret: err;
 }
