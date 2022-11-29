@@ -1,7 +1,7 @@
 #!/bin/bash
 #set -e
 ## Copy this script inside the kernel directory
-KERNEL_DEFCONFIG=vendor/alioth_defconfig
+KERNEL_DEFCONFIG=vendor/apollo_defconfig
 export PATH="/root/rohail33/kernel/clang/bin:$PATH"
 export ARCH=arm64
 export SUBARCH=arm64
