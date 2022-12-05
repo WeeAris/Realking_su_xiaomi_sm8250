@@ -817,63 +817,41 @@ static u32 interpolate(uint32_t x, uint32_t xa, uint32_t xb, uint32_t ya, uint32
 
 u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
 {
-	if (panel->hbm_mode)
-		return 0;
-
 	u32 brightness = dsi_panel_get_backlight(panel);
-	int i, alpha;
+	int i;
 
 	if (!panel->fod_dim_lut)
-		alpha = 0;
+		return 0;
 
 	for (i = 0; i < panel->fod_dim_lut_count; i++)
 		if (panel->fod_dim_lut[i].brightness >= brightness)
 			break;
 
 	if (i == 0)
-		alpha = panel->fod_dim_lut[0].alpha;
+		return panel->fod_dim_lut[i].alpha;
 
-	else if (i == panel->fod_dim_lut_count)
-		alpha = panel->fod_dim_lut[brightness - 1].alpha;
-	else
-		alpha = interpolate(brightness,
-				panel->fod_dim_lut[i - 1].brightness,
-				panel->fod_dim_lut[i].brightness,
-				panel->fod_dim_lut[i - 1].alpha,
-				panel->fod_dim_lut[i].alpha);
-	return alpha;
+	if (i == panel->fod_dim_lut_count)
+		return panel->fod_dim_lut[i - 1].alpha;
+
+	return interpolate(brightness,
+			panel->fod_dim_lut[i - 1].brightness, panel->fod_dim_lut[i].brightness,
+			panel->fod_dim_lut[i - 1].alpha, panel->fod_dim_lut[i].alpha);
 }
 
 int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status)
 {
 	int rc = 0;
-	
-	if (panel->hbm_mode)
-		return rc;
 
 	if (status) {
-#ifdef CONFIG_EXPOSURE_ADJUSTMENT
-		if (ea_panel_is_enabled()) {
-			ea_panel_mode_ctrl(panel, 0);
-			panel->resend_ea = true;
-		}
-#endif
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_FOD_ON);
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_HBM_FOD_ON);
 		if (rc)
-			pr_err("[%s] failed to send DSI_CMD_SET_DISP_HBM_FOD_ON cmd, rc=%d\n",
+			pr_err("[%s] failed to send DSI_CMD_SET_MI_HBM_FOD_ON cmd, rc=%d\n",
 					panel->name, rc);
 	} else {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_FOD_OFF);
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_HBM_FOD_OFF);
 		if (rc)
-			pr_err("[%s] failed to send DSI_CMD_SET_DISP_HBM_FOD_OFF cmd, rc=%d\n",
+			pr_err("[%s] failed to send DSI_CMD_SET_MI_HBM_FOD_OFF cmd, rc=%d\n",
 					panel->name, rc);
-#ifdef CONFIG_EXPOSURE_ADJUSTMENT
-		if (panel->resend_ea) {
-			ea_panel_mode_ctrl(panel, 1);
-			panel->resend_ea = false;
-		}
-#endif
-
 	}
 
 	return rc;
@@ -2165,8 +2143,6 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-dispparam-pen-60hz-command",
 	"qcom,mdss-dsi-dispparam-pen-30hz-command",
 	/* xiaomi add end */
-	"qcom,mdss-dsi-dispparam-hbm-fod-on-command",
-	"qcom,mdss-dsi-dispparam-hbm-fod-off-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -2265,8 +2241,6 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-dispparam-pen-60hz-command-state",
 	"qcom,mdss-dsi-dispparam-pen-30hz-command-state",
 	/* xiaomi add end */
-	"qcom,mdss-dsi-dispparam-hbm-fod-on-command-state",
-	"qcom,mdss-dsi-dispparam-hbm-fod-off-command-state",
 };
 
 int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -5368,28 +5342,18 @@ error:
 int dsi_panel_apply_hbm_mode(struct dsi_panel *panel)
 {
 	static const enum dsi_cmd_set_type type_map[] = {
-		DSI_CMD_SET_DISP_HBM_FOD_OFF,
-		DSI_CMD_SET_DISP_HBM_FOD_ON
+		DSI_CMD_SET_MI_HBM_FOD_OFF,
+		DSI_CMD_SET_MI_HBM_FOD_ON
 	};
 
 	enum dsi_cmd_set_type type;
 	int rc;
 
-
-	if (panel->hbm_mode >= 0 && panel->hbm_mode < ARRAY_SIZE(type_map)) {
-#ifdef CONFIG_EXPOSURE_ADJUSTMENT
-		if (ea_panel_is_enabled() && panel->hbm_mode != 0) {
-			ea_panel_mode_ctrl(panel, 0);
-			panel->resend_ea_hbm = true;
-		} else if (panel->resend_ea_hbm && panel->hbm_mode == 0) {
-			ea_panel_mode_ctrl(panel, 1);
-			panel->resend_ea_hbm = false;
-		}
-#endif
+	if (panel->hbm_mode >= 0 &&
+		panel->hbm_mode < ARRAY_SIZE(type_map))
 		type = type_map[panel->hbm_mode];
-	} else {
+	else
 		type = type_map[0];
-	}
 
 	mutex_lock(&panel->panel_lock);
 	rc = dsi_panel_tx_cmd_set(panel, type);
