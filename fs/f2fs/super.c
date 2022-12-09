@@ -295,9 +295,7 @@ static int __init f2fs_create_casefold_cache(void)
 {
 	f2fs_cf_name_slab = f2fs_kmem_cache_create("f2fs_casefolded_name",
 							F2FS_NAME_LEN);
-	if (!f2fs_cf_name_slab)
-		return -ENOMEM;
-	return 0;
+	return f2fs_cf_name_slab ? 0 : -ENOMEM;
 }
 
 static void f2fs_destroy_casefold_cache(void)
@@ -1343,8 +1341,7 @@ default_check:
 		return -EINVAL;
 	}
 
-	if ((f2fs_sb_has_readonly(sbi) || f2fs_readonly(sbi->sb))
-		 && test_opt(sbi, FLUSH_MERGE)) {
+	if (f2fs_is_readonly(sbi) && test_opt(sbi, FLUSH_MERGE)) {
 		f2fs_err(sbi, "FLUSH_MERGE not compatible with readonly mode");
 		return -EINVAL;
 	}
@@ -2090,7 +2087,7 @@ static void default_options(struct f2fs_sb_info *sbi)
 	set_opt(sbi, MERGE_CHECKPOINT);
 	F2FS_OPTION(sbi).unusable_cap = 0;
 	sbi->sb->s_flags |= SB_LAZYTIME;
-	if (!(f2fs_sb_has_readonly(sbi) || f2fs_readonly(sbi->sb)))
+	if (!f2fs_is_readonly(sbi))
 		set_opt(sbi, FLUSH_MERGE);
 	if (f2fs_hw_support_discard(sbi) || f2fs_hw_should_discard(sbi))
 		set_opt(sbi, DISCARD);
@@ -4094,7 +4091,8 @@ static void f2fs_tuning_parameters(struct f2fs_sb_info *sbi)
 	/* adjust parameters according to the volume size */
 	if (MAIN_SEGS(sbi) <= SMALL_VOLUME_SEGMENTS) {
 		if (f2fs_block_unit_discard(sbi))
-			SM_I(sbi)->dcc_info->discard_granularity = 1;
+			SM_I(sbi)->dcc_info->discard_granularity =
+						MIN_DISCARD_GRANULARITY;
 		SM_I(sbi)->ipu_policy = 1 << F2FS_IPU_FORCE |
 					1 << F2FS_IPU_HONOR_OPU_WRITE;
 	}
@@ -4649,9 +4647,7 @@ static int __init init_inodecache(void)
 	f2fs_inode_cachep = kmem_cache_create("f2fs_inode_cache",
 			sizeof(struct f2fs_inode_info), 0,
 			SLAB_RECLAIM_ACCOUNT|SLAB_ACCOUNT, NULL);
-	if (!f2fs_inode_cachep)
-		return -ENOMEM;
-	return 0;
+	return f2fs_inode_cachep ? 0 : -ENOMEM;
 }
 
 static void destroy_inodecache(void)
