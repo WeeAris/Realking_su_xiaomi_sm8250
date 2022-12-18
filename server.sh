@@ -13,7 +13,8 @@ echo "Cloning failed! Aborting..."
 exit 1
 fi
 fi
-
+KERNEL_DIR=`pwd`
+ZIMAGE_DIR="$KERNEL_DIR/out/arch/arm64/boot"
 # Speed up build process
 MAKE="./makeparallel"
 BUILD_START=$(date +"%s")
@@ -34,3 +35,15 @@ make -j$(nproc --all) O=out \
                       CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
                       LLVM=1 \
                       LLVM_IAS=1
+
+TIME="$(date "+%Y%m%d-%H%M%S")"
+mkdir -p tmp
+cp -fp $ZIMAGE_DIR/Image.gz tmp
+cp -rp ./anykernel/* tmp
+cd tmp
+7za a -mx9 tmp.zip *
+cd ..
+rm *.zip
+cp -fp tmp/tmp.zip RealKing-Munch-AOSP-$TIME.zip
+rm -rf tmp
+echo $TIME
