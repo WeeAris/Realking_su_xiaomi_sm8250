@@ -140,3 +140,6 @@ kernel/configs/android-*.cfg
 # Tech package directories
 #techpack/
 out/
+tmp/
+*.zip
+*.log

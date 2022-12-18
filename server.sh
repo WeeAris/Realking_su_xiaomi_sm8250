@@ -45,6 +45,6 @@ cd tmp
 7za a -mx9 tmp.zip *
 cd ..
 rm *.zip
-cp -fp tmp/tmp.zip RealKing-Alioth-AOSP-$TIME.zip
+cp -fp tmp/tmp.zip RealKing-Apollo-AOSP-$TIME.zip
 rm -rf tmp
 echo $TIME
