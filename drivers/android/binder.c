@@ -4816,7 +4816,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			if (target_proc->pid != info.pid)
 				continue;
 			binder_inner_proc_lock(target_proc);
-			atomic_inc(&target_proc->tmp_ref);
+			target_proc->tmp_ref++;
 			binder_inner_proc_unlock(target_proc);
 			target_procs[i++] = target_proc;
 		}
