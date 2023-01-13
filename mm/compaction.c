@@ -2436,9 +2436,6 @@ static void compact_node(int nid)
 	}
 }
 
-#ifdef CONFIG_ZSWAP
-extern void zswap_compact(void);
-#endif /* CONFIG_ZSWAP */
 /* Compact all nodes in the system */
 static void compact_nodes(void)
 {
@@ -2449,10 +2446,6 @@ static void compact_nodes(void)
 
 	for_each_online_node(nid)
 		compact_node(nid);
-
-#ifdef CONFIG_ZSWAP
-	zswap_compact();
-#endif /* CONFIG_ZSWAP */
 }
 
 /* The written value is actually unused, all memory is compacted */

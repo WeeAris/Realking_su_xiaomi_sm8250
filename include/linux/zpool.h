@@ -59,10 +59,6 @@ void *zpool_map_handle(struct zpool *pool, unsigned long handle,
 
 void zpool_unmap_handle(struct zpool *pool, unsigned long handle);
 
-unsigned long zpool_compact(struct zpool *pool);
-
-unsigned long zpool_get_num_compacted(struct zpool *pool);
-
 u64 zpool_get_total_size(struct zpool *pool);
 
 
@@ -77,8 +73,6 @@ u64 zpool_get_total_size(struct zpool *pool);
  * @shrink:	shrink the pool.
  * @map:	map a handle.
  * @unmap:	unmap a handle.
- * @compact:	try to run compaction over a pool
- * @get_num_compacted:	get amount of compacted pages for a pool
  * @total_size:	get total size of a pool.
  *
  * This is created by a zpool implementation and registered
@@ -107,14 +101,13 @@ struct zpool_driver {
 				enum zpool_mapmode mm);
 	void (*unmap)(void *pool, unsigned long handle);
 
-	unsigned long (*compact)(void *pool);
-	unsigned long (*get_num_compacted)(void *pool);
-
 	u64 (*total_size)(void *pool);
 };
 
 void zpool_register_driver(struct zpool_driver *driver);
 
 int zpool_unregister_driver(struct zpool_driver *driver);
+
+bool zpool_evictable(struct zpool *pool);
 
 #endif

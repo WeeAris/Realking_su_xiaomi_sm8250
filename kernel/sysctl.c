@@ -1752,21 +1752,13 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &zero,
 	},
 	{
-#ifdef CONFIG_VBSWAP
-		.procname	= "vbswappiness",
-#else
 		.procname	= "rswappiness",
-#endif
 		.data		= &vm_swappiness,
 		.maxlen		= sizeof(vm_swappiness),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
-#ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
-		.extra2     = &max_swappiness,
-#else
 		.extra2		= &two_hundred,
-#endif
 	},
 	{
 		.procname       = "want_old_faultaround_pte",
