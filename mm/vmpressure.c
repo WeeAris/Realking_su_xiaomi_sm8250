@@ -40,9 +40,6 @@ static unsigned long vmpressure_scale_max = 100;
 
 /* vmpressure values >= this will be scaled based on allocstalls */
 static unsigned long allocstall_threshold = 70;
-
-/* vmpressure values >= this will be scaled based on allocstalls */
-static unsigned long allocstall_threshold = 70;
 module_param_named(allocstall_threshold, allocstall_threshold,
 			ulong, 0644);
 
