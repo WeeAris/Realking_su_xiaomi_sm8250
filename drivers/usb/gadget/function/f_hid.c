@@ -737,10 +737,8 @@ static int hidg_setup(struct usb_function *f,
 	case ((USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
 		  | HID_REQ_SET_REPORT):
 		VDBG(cdev, "set_report | wLength=%d\n", ctrl->wLength);
-		if (hidg->use_out_ep)
-			goto stall;
-		req->complete = hidg_ssreport_complete;
-		req->context  = hidg;
+		req->context = hidg;
+		req->complete = hidg_intout_complete;
 		goto respond;
 		break;
 
