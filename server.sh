@@ -2,14 +2,16 @@
 #set -e
 ## Copy this script inside the kernel directory
 KERNEL_DEFCONFIG=vendor/apollo_defconfig
-export PATH="/home/revolw/rohail33/kernel/clang/bin:$PATH"
+DIR=`readlink -f .`
+MAIN=`readlink -f ${DIR}/..`
+export PATH="$MAIN/clang/bin:$PATH"
 export ARCH=arm64
 export SUBARCH=arm64
-export KBUILD_COMPILER_STRING="$(/home/revolw/rohail33/kernel/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
+export KBUILD_COMPILER_STRING="$($MAIN/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
 
-if ! [ -d "/home/revolw/rohail33/kernel/clang" ]; then
-echo "Proton clang not found! Cloning..."
-if ! git clone -q https://gitlab.com/ZyCromerZ/clang.git --depth=1 --single-branch /home/revolw/rohail/kernel/proton-clang; then
+if ! [ -d "$MAIN/clang" ]; then
+echo "ZYC clang not found! Cloning..."
+if ! git clone -q https://gitlab.com/ZyCromerZ/clang.git --depth=1 --single-branch $MAIN/clang; then
 echo "Cloning failed! Aborting..."
 exit 1
 fi
