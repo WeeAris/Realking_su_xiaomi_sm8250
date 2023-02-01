@@ -2374,6 +2374,13 @@ long _do_fork(unsigned long clone_flags,
 
 	if (task_is_zygote(current)) {
 		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_L3_LAT, 50);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_L3_LAT, 50);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPU7_CPU_L3_LAT, 50);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT, 50);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT, 50);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT, 50);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT, 50);
 	}
 
 	/*

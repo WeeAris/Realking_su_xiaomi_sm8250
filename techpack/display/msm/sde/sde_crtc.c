@@ -3671,6 +3671,13 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 	SDE_ATRACE_BEGIN("crtc_commit");
 
 	devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+        devfreq_boost_kick(DEVFREQ_MSM_CPU0_CPU_L3_LAT);
+        devfreq_boost_kick(DEVFREQ_MSM_CPU4_CPU_L3_LAT);
+        devfreq_boost_kick(DEVFREQ_MSM_CPU7_CPU_L3_LAT);
+        devfreq_boost_kick(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT);
+        devfreq_boost_kick(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT);
+        devfreq_boost_kick(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT);
+        devfreq_boost_kick(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT);
 
 	idle_pc_state = sde_crtc_get_property(cstate, CRTC_PROP_IDLE_PC_STATE);
 
