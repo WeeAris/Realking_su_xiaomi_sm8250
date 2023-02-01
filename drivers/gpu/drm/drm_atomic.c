@@ -2616,7 +2616,15 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
 		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
-}
+                devfreq_boost_kick(DEVFREQ_MSM_CPU0_CPU_L3_LAT);
+                devfreq_boost_kick(DEVFREQ_MSM_CPU4_CPU_L3_LAT);
+                devfreq_boost_kick(DEVFREQ_MSM_CPU7_CPU_L3_LAT);
+                devfreq_boost_kick(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT);
+                devfreq_boost_kick(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT);
+                devfreq_boost_kick(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT);
+                devfreq_boost_kick(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT);
+
+	}
 
 	drm_modeset_acquire_init(&ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE);
 
